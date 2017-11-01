@@ -1,0 +1,233 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{geometry}
+\usepackage{graphicx}
+
+\geometry{margin=1in}
+
+\title{COM rough notes}
+\author{Catherine Woodford}
+
+\begin{document}
+\maketitle
+
+\section{COM removal reasoning}
+
+\subsection{Why do we care about COM drift?}
+The primary concern with binary black hole (BBH) simulations is the validity of their gravitational waveforms. Above all, the output from a BBH simulation should result in a reliable, reproducible waveform that can then be released for public usage. In the case of SXS, many of these waveforms are then compressed into a catalogue that is released to LIGO for data analysis and waveform comparisons with their data.
+
+Waveforms from SXS are represented by spherical harmonics, more specifically as Spin-Weighted-Spherical-Harmonics (SWSH). These are especially useful for precessing BBH systems, which is the more general case. Using the logic applied by \cite{MB14}, the transverse-traceless projection of the metric perturbation caused by the gravitational waves at time $t$ and location $\vec{r}$ relative to the binary can be combined into a single complex quantity, given by
+
+\begin{equation}
+h_{+}(t,\vec{r}), h_{x}(t,\vec{r}) \rightarrow h(t,\vec{r}) := h_{+}(t,\vec{r}) - \textrm{i} h_{x}(t,\vec{r}) .
+\end{equation}
+
+For each slice in time, the combined perturbation $h$ is measured on the coordinate sphere. The angular dependence of this measurement can then be expanded in SWSH. If the reader is interested in knowing more about SWSH and how they came to be for gravitational wave theory, this class of functions is further discussed in Appendix A.
+
+$h$ has a spin weighting of -2 \cite{MB14,PA11,ENRP66}, and may be represented as
+
+\begin{equation}
+h(t,\vec{r}) = \sum_{l,m} h^{l,m}(t)_{-2}Y_{l,m}(\vec{r}),
+\end{equation}
+where $h^{l,m}(t)$ are typically referred to as modes, and are much more convenient to discuss when analyzing BBH than the total perturbation in any particular direction. Gravitational waveforms are typically represented by their modes, and more specifically by the parent, or dominant, $l$=2, $m$=2 mode. The (2,2) mode is usually written as $h_{2,2}$, and similarly the related modes are written in this fashion.
+
+While the $h_{2,2}$ mode is the dominant mode, it is important to consider the behaviour of the other present modes in the waveform. The other modes may not be used for detection directly, as they are much smaller in magnitude compared to the $h_{2,2}$ mode, but are useful for verifying the reliability and potentially the accuracy of the waveform. If the shape, variability, magnitude, or any other characteristic of the higher order, or sub-dominant, modes are found to not suitably match with theory, then this indicates a possible flaw in the simulation.
+
+One clear issue is the coordinate system, or gauge, choice for the simulation, as spherical harmonics and hence SWSH depend on the defined coordinate centre. The centre chosen for the simulation is the centre of mass (COM) of the system, calculated and set at the beginning of the simulation. It is expected that the COM will move slightly throughout the simulation, however large movements are not expected and infer a flaw in the choice of gauge. If the COM moves significantly, or drifts, there is mode bleeding \cite{MB16}. It has been shown by \cite{MB16} that the $h_{2,2}$ mode of BBH waveforms leaks into the higher mode waveforms, and this leakage can be partially removed through COM drift corrections. As seen by figures 9 and 10 of \cite{MB16}, there is significant bleeding of the dominant mode into the higher order modes which can be lessened by correcting for COM drift.
+
+
+\subsection{What are we doing now to remove COM drift?}
+The current method used for correcting the COM drift and hence reducing mode bleeding is performing a set of Bondi-Metzner-Sachs (BMS) transformations on the data. See Appendix B for a more general overview of the BMS group and how it impacts the waveform modes.
+
+As seen from the right side of Fig 1, the COM drift has a linear component. This linear trend is found in all types of BBH simulations to varying degrees.
+\begin{figure}
+	\includegraphics[width=16cm]{PosterImages/COM_COMscri.png}
+	\caption{Right side shows the uncorrected COM position plotted in the x-y plane for the duration of the simulation. The different colours correspond to the different resolutions of the same run. The left side shows the corrected COM position over the duration of the simulation for the same run in the x-y plane. This particular simulation is a precessing BBH with mass ratio 4, with the larger black hole having a spin of magnitude 0.35. The public name for the simulation in the SXS catalogue is SXS:BBH:1269. The catalogue can be accessed here: https://www.black-holes.org/data/waveforms/index.html}
+\end{figure}
+
+As seen in the left side of Fig 1, it is possible to correct for this substantial linear drift in the COM. The correction consists of applying a BMS translation and boost, which are optimized by minimizing the average distance between the COM and the origin. These are then combined into a BMS supertranslation and applied to the waveform data. The mechanics behind optimizing the translation and boost values for any one simulation can be found in Appendix E of \cite{MB16}, which is restated here as an abridged copy in Appendix C. However, the remnant of the COM position data shows semi-consistent epicycles about the origin, which are not explained and are the basis for this work.
+
+
+The determination and application of the translation and boost to waveform data has been made available through the python module \textit{scri} \cite{MB16}, found here: https://github.com/moble/scri. We name this supertranslation $\vec{\delta}$, such that the corrected COM function may be written as
+
+\begin{equation}
+\vec{\delta} = \vec{c} -(\delta \vec{x} + vt),
+\end{equation}
+where $c$ is the original COM position, $\delta \vec{x}$ is the translation, and $v$ is the boost; applied at each time instance $t$.
+
+The entirety of the SXS public catalog has been COM corrected using a combination of python scripts I wrote that use \textit{scri}. The public waveforms have been corrected with the same parameters: the translation and boost values found using a 10\% time cut at the beginning of the data (to avoid the junk/settling/relaxation data of the system) and to only use up to the time at which a common horizon is found for the binary. All complete data sets in SimulationAnnex/Catalog and Simulation/Incoming have undergone this COM correction as of January 2017.
+
+We know from \cite{MB16} that COM removal is ``helpful'', but we don't have a quantifiable reason for how much it remedies the mode bleeding. All analysis is done by a by-eye test from myself or M. Boyle to look for a ``smoothing'' of the higher order modes. This smoothing can be seen by comparing the uncorrected and $\delta$ corrected higher order waveforms, as seen in Fig 2. One goal of this work is to find a quantifiable method for characterizing reduced mode bleeding.
+
+\begin{figure}
+	\includegraphics[width=15cm]{PosterImages/COMh33_COMscrih33.png}
+	\includegraphics[width=15cm]{PosterImages/COMh33scri.png}
+	\caption{Comparison of the $h_{33}$ mode for simulation SXS:BBH:1269. It can be seen that the amplitude of the waveform is much smoother in the corrected COM frame, matching with predictions.}
+\end{figure}
+
+\subsection{Studying the catalogue with \textit{scri}}
+Along with having COM corrected the waveforms, we have also performed analysis on the values of the boosts and translations needed by each simulation in Simulation/Incoming/PrecBBH and Simulation/Catalog/ChuAligned. We have neglected to include a larger subset of the SXS data due to inconsistencies in initial data construction - which effects the analysis.
+
+The primary variables are the COM position drift at the time of common horizon (so $v_{COM}t_{f-i}$), $v_{COM}$, the deviation from the $v_{COM}$ average, mass ratio, and spin.
+
+It seems that the high resolution runs (Lev3, Lev4, Lev5) have larger COM drifts than Lev1 and Lev2. There also seems to be some connection between COM drift and mass ratio (increasing drift with increasing mass ratio) for the precessing runs, but not for the chi aligned (spin aligned) runs.
+
+
+
+\subsection{COM definition}
+Currently COM estimation within SpEC constists of 
+\begin{equation}
+\vec{c} = \frac{m_{1}}{m} \vec{c_1} + \frac{m_{2}}{m} \vec{c_2}
+\end{equation}
+where $m = m_1 + m_2$ is the total mass of the system. This is the Newtonian expression for the COM, and from output of the simulations, we know is not an apt description of the true COM. We're correcting, which improves the waveform by some amount, but we may not be looking at the correct representation of the COM to begin with as we're left with unexplained epicycles. 
+
+\subsubsection{PN approximation}
+The obvious first step is to try low orders of PN to see if there is improvement in terms of COM movement. Note that the COM should be the origin of the coordinate system ideally.
+1PN order corrections were not successful, and upon closer inspection were found to be analytically trivial given the mechanics of the system. We implemented the 1PN order correction given by Eq (4.5) in \cite{dA01}. This formalism goes up to 3.5 PN for the COM vector in time, using the form $G^{i} = P^{i}t + K^{i}$ where $P^{t}$ and $K^{i}$ are the potential and kinetic energy of the system respectively. The correction up to 1PN is
+\begin{equation}
+G^{i} = m_1y^{i}_1 + \frac{1}{c^2} { y_1^{i} (-\frac{Gm_1m_2}{2r_{12}} + \frac{m_1v_1^{2}}{2} ) } + 1 \longleftrightarrow 2
+\end{equation}
+where $y^{i}$ are the positions of the black holes.
+Using this equation, the effects of the correction on the COM were minimal numerically, and it was later calculated that the kinetic and potential energies used here should cancel out in the system regardless - leading us to the conclusion that the epicycle effects on the COM were not due to lacking a PN formalism.
+
+\subsubsection{Linear momentum kicks}
+As the COM epicycles are not corrected by PN approximations, our next step analyzed the possibility of the epicycles resulting from linear momentum kicks. According to \cite{MF83}, asymmetric BBH or other compact object systems are subject to linear momentum kicks once every orbit. The COM was calculated during the inspiral, and was found to move corresponding to the linear momentum flux given off by the gravitational waves from the system. Since the system is asymmetric, the gravitational waves would also be emitted asymmetrically and the COM drift to compensate. This results in a circular motion for the COM over time, with an estimated radius
+\begin{equation}
+r_{kick,COM} = a\Big(\frac{29\sqrt{2}}{105}\Big)\Big(\frac{a}{R_s}\Big)^{-7/2} f(m_1/m_2)
+\end{equation}
+for a BBH comprised of non-spinning BH. $a$ is the semi-major axis of the orbit, and $R_s$ is the Schwarschild radius for the total mass of the BBH. $f$ is a polynomial function in the BBH masses, where $f(m_1/m_2) = (1+m_2/m_1)^{-2}(1+m_1/m_2)^{-3}(1-m_1/m_2)$ and $|f| < 0.02$ for all mass ratios. This leads to radii 
+\begin{equation}
+r_{kick,COM} < 7.81 \textrm{x} 10^{-3} [a\Big(\frac{a}{R_s}\Big)^{-7/2}]
+\end{equation}
+for the COM just from linear momentum kicks. Taking any particular run in the SXS catalogue, say SXS:BBH:1269, and plugging in the values for $a$ and $R_s$ in simulation units yields $r_{kick, COM} < 1\textrm{x}10^{-4}$. This is at least two orders of magnitude smaller than the epicycles we see in our simulations.
+We acknowledge that the estimate for the epicycles from linear momentum kicks in \cite{MF83} is for non-spinning objects, and that spin-orbit coupling factors may cause this COM epicycle radius to inflate. However, there is additional evidence that the calculated COM does have some gauge dependence and should be corrected accordingly, and is outlined in the following section.
+
+\section{COM analysis}
+It was assumed that the epicycle motion seen in the COM after the translation and boost were applied was from the COM being a small amount off centre, ie. on the line of sight between the black holes but shifted slightly from the Newtonian estimate.
+Our first test was to see if this was the case, or if the COM was off the line of sight. Both cases would give rise to these epicycles, and while the prior may lead to some numerical or physical alteration in our understanding of the COM of BBH, the latter is physically more confusing as it implies that the COM is NOT between the black holes at all, and may indeed be a purely, or largely, numerical effect.
+Regardless of the origin of these epicycles, removing them is believed to improve the quality of the simulations and thus the waveforms.
+To discover which case we are operating with (COM aligned or not aligned with the line of sight between the black holes), it was necessary to analyze the rotating coordinate frame. For our system, we have three unit vectors that describe the rotating reference frame:
+\begin{equation}
+  \hat{n} = \frac{\vec{c_1} - \vec{c_2}}{|\vec{c_1} - \vec{c_2}|} = \frac{\vec{r_{12}}}{|\vec{r_{12}}|},
+\end{equation}
+
+\begin{equation}
+  \hat{k} = \frac{\vec{r_{12}} \times \vec{v_{12}}}{|\vec{r_{12}}-\vec{v_{12}}|} = \frac{\vec{\omega}}{|\vec{\omega}|},
+\end{equation}
+
+\begin{equation}
+ \hat{\lambda} = -\hat{n} \times \hat{k}
+\end{equation}
+where $\hat{n}$ points along the separation vector $r_{12}$, $\hat{k}$ points out of the plane, and $\hat{\lambda}$ points along the direction of rotation. Now there should be a distinct relationship between the $\hat{n}$ unit vector and $\vec{c}$, where if the x components of both are plotted against each other the situation of the COM position being along the line of sight of the black holes or not should be apparent. The graph of the x components of $\hat{n}$ vs $\vec{c}$ should either be a straight line or a circle. A linear shape indicates that the COM position is along the line of sight of the black holes, and a circular shape indicates that the COM position is not along the line of sight of the black holes.
+In the case of all precessing runs in the SXS catalogue, a circular graph like that of Fig 3 was found. This implies that the COM position does not lie along the line of sight of the two black holes, and regardless of physical factors, must be partially due to gauge choice.
+
+\begin{figure}
+	\center
+	\includegraphics[width=12cm]{PosterImages/EpicycleType.png}
+	\caption{$\hat{n}_x$ vs $\hat{\delta}_x$ for the simulation SXS:BBH:1269. The circular pattern as opposed to the expected linear pattern implies that the COM is not along the line of sight of the black holes, and hence these vectors do not line up.}
+\end{figure}
+
+Knowing that the COM does not lie along the line of sight, we investigated the $\hat{n}$ and $\hat{\lambda}$ unit vectors. Investigating $\vec{\delta}$ projected onto the rotating coordinate frame vectors, we found further evidence that the COM does not lie along the line of sight of the COM as well as the phase shift that the COM is displaced by. This can be seen in the right panel of Fig 4. We also find that there is some exoplanar motion of the COM,as seen in the left panel of Fig 4, which may be due to spin-orbit coupling factors. For this analysis, we use the fact that the out of plane motions are oscillatory that their overall effect should be much smaller than the COM motion in the plane.
+
+\begin{figure}
+	\includegraphics[width=15cm]{PosterImages/deltanVSdeltal.png}
+	\caption{Projections of $\vec{\delta}$ onto the rotating coordinate frame basis vectors. The right panel shows the overall phase shift of the COM off the line of sight, and the left panel shows the motion of the COM out of the plane. Dashed lines indicate the end of the run (towards merger) and the dotted lines indicate the beginning of the run (during junk radiation).}
+\end{figure}
+
+This leads us to a potential method for epicycle removal
+
+\subsection{Epicycle Removal}
+(A more thorough analysis of SXS:BBH:1269 can be found in the jupyter notebook \\ \texttt{PrecBBH000045\_COManalysis.ipynb}. It was noticed that this run as an abnormally large COM drift from the MonitorBbhRuns output, but overall shows very similar COM drift patterns to other precessing runs and hence is a good candidate for testing additional COM drift removal processes.)
+Using the rotational unit vector analysis mentioned previously, we propose a new definition for COM correction
+\begin{align}
+  \vec{c}_f &= \vec{\delta} - \vec{\delta}_r, \\
+  \vec{\delta}_r &= \Delta_n(t) \hat{n}(t) + \Delta_{\lambda}(t) \hat{\lambda}(t)
+\end{align} 
+where $\Delta_n(t) = \vec{\delta}\cdot \hat{n}$, $\Delta_{\lambda}(t) = \vec{\delta} \cdot \hat{\lambda}$ are the projections of $\vec{\delta}$ onto the rotational coordinate system unit vectors. 
+The goal, where the COM epicycles are mostly unphysical, is to correct the COM drift using the epicycle correction factor $\vec{\delta}_r$ and then to apply the \textit{scri} correction $(\delta \vec{x} + \vec{v}t$ on this epicycle corrected data. The motivation for this order of application is that the epicycles themselves do not need to be corrected in the waveforms, just in the representation of the COM. The COM is used as the coordinate centre, and only BMS operations like the translation and boost may be applied to the data itself. Hence, we need the most accurate representation for the translation and boost to better reduce mode mixing. Due to the presence of the epicycles in the COM, the \textit{scri} module does not have reproducible values, and change depending on the beginning and ending fraction chosen. Different beginning and ending fractions imply that a different number of cycles is being included, and due to the epicycles correlating with the cycles of the BBH, causes slight skews in the determined translation and boost values. However, if the epicycles are removed initially, we should be left with a linear function. This linear function should not depend on the number of cycles included for consideration when calculating the translation and boost, and hence be a more reliable method for correcting COM.
+The epicycle removal with the \textit{scri} correction applied to the SXS:BBH:1269 run can be seen in Fig 5. The same data with the epicycle removal performed without the \textit{scri} correction can be seen in Fig 6.
+
+\begin{figure}
+	\includegraphics[width=16cm]{PosterImages/COMscri_COMcw.png}
+	\caption{The left panel is the COM data for SXS:BBH:1269 with the \textit{scri} correction, the left panel is the same data but with the \textit{scri} correction and the epicycle correction applied. Note that the combined correction, effectively $\vec{c}_f$, is about one order of magnitude smaller than just the \textit{scri} correction.} 
+\end{figure}
+
+\begin{figure}
+	\center
+	\includegraphics[width=10cm]{PosterImages/COMcw.png}
+	\caption{The COM data for SXS:BBH:1269 with only the epicycle correction. Clearly the epicycles have been largely removed and the remaining data is much more linear. The remaining oscillations could potentially be from the linear momentum kicks or spin-orbit coupling effects that have not yet been considered.}
+\end{figure}
+
+The script with this functionality is currently on the bitbucket https://bitbucket.org/cw4674/annexcomplots/, named \texttt{COM\_w\_EpicycleCorr.py}. This script currently does not successfully give a reproducible translation and boost, and requires further work.
+
+\subsection{Spin Aligned and Precessing Run Analysis}
+All investigations and evidence up to this point have been regarding precessing BBH. However, we have also considered runs with spin-aligned initial data, and have compiled findings regarding the \textit{scri} correction for these two different types of runs.
+In general, the precessing runs required larger boosts than the spin-aligned runs, as can be seen in the Fig 7, which compares COM velocity (boost) with the corresponding runs mass ratio. No other strong correlations could be made, although it does appear that larger mass ratios lead to larger boost correction factors in the precessing runs.
+
+\begin{figure}
+	\includegraphics[width=9cm]{ChuAligned/170504COMVelocityChuQ_VelocityAndMass.pdf}
+	\includegraphics[width=9cm]{PrecBBH/170504COMVelocityChuQ_VelocityAndMass.pdf}
+	\caption{The left plot shows the COM boost correction factor versus the mass ratio for the spin-aligned runs, and the right plot shows the same for the precessing runs. The boost values for the precessing runs are typically larger in magnitude that those for the spin-aligned runs, but no other strong correlations between the data could be made.}
+\end{figure}
+
+\section{TO DO!!!}
+
+\begin{enumerate}
+\item{Find a quantity that defines how well COM corrections improve a waveform}
+\subitem{This will have something to do with the unmixing of the 2,2 and higher modes...}
+\item{Find a way to better define the COM so that there isn't as much movement and hence less mixing to begin with}
+\subitem{Found, need to make a script and then either implement into scri as an add on OR make into a seperate function that's independent of scri completely.}
+\item{Investigate spin-orbit effects, especially those from spinning BBH and linear momentum kicks}
+\item{Fix and investigate script}
+\subitem{Verify need for iterative structure}
+\subitem{Test different linear fitting methods - do any produce reliable values?}
+\subitem{If they are reliable, compare with $\vec{\delta}$ for time dependence.}
+\end{enumerate}
+
+
+
+
+
+\section{Appendix}
+\subsection{Appendix A: Spin Weighted Spherical Harmonics}
+
+SWSH are a class of functions relating to the well-known spherical harmonics functions. Spherical harmonics themselves are used to represent functions on a sphere, and typically have two iconic variables that define the order of spherical harmonic to be used. The convention used here and in SXS is $Y_{l,m}$. Another convention we will adopt is to use the spherical coordinate system, where $\theta, \phi$ are the typical spherical polar coordinates. SWSH are thus defined \cite{ENRP66} as 
+\center
+ \[$$_sY_{l,m}=$$ \begin{cases}
+	\Big[ \frac{(l-s)!}{(l+s)!}\Big]^{1/2}\delta^s Y_{l,m} & (0 \leq s \leq l), \\
+	(-1)^s \Big[\frac{(l+s)!}{(l-s)!}\Big]^{1/2} \bar{\tilde{\delta}}^{-s} Y_{l,m} & (-l \leq s \leq 0)
+	\end{cases}
+	\]
+
+where $\tilde{\delta}$ is effectively a covariant differentiation operator in the surface of the sphere. $\tilde{\delta}$ is defined \cite{ENRP66} as
+
+\begin{equation}
+\tilde{\delta} \eta = -(\sin\theta)^s \Big\{ \frac{\partial}{\partial \theta} + \frac{i}{\sin \theta} \frac{\partial}{\partial \phi}\Big\} \big\{ (\sin \theta)^s \eta \big\}
+\end{equation} 
+
+when operating on some function $\eta$ that has a spin $s$. The spin of a function is evaluated by how it transforms under rotation of the spacelike vectors $Re (m^\mu)$, $Im(m^\mu)$ where $m^\mu$ is a complex null vector. The rotation of these spacelike vectors is given by
+
+\begin{equation}
+(m^\mu)' = e^{i \Psi} m^\mu .
+\end{equation}
+
+A function $\eta$ is then said to have a spin $s$ if it transforms as
+
+\begin{equation}
+\eta' = e^{s i \Psi}\eta.
+\end{equation}
+
+In the case of gravitational waves, the metric perterbation $h$ is found to have a spin of -2 \cite{ENRP66,PA11} and this decomposition has been used in numerical relativity extensively. SXS expresses waveforms in SWSH using this weighting, and everything in this work refers to these functions as such.
+
+\subsection{Appendix B: Bondi-Metzner-Sachs Spacetime and transformation group}
+
+%%FILL ME IN%%
+
+\subsection{Appendix C: Optimizing the translation and boost for COM drift corrections}
+%%FILL ME IN%%
+
+\bibliographystyle{unsrt}
+\bibliography{ref}
+
+\end{document}
